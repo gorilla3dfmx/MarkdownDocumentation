@@ -3,6 +3,8 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize syntax highlighting
     if (typeof hljs !== 'undefined') {
+        // Configure highlight.js to ignore warnings about escaped HTML (we properly escape server-side)
+        hljs.configure({ ignoreUnescapedHTML: true });
         hljs.highlightAll();
     }
 

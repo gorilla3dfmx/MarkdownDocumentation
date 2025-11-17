@@ -38,7 +38,7 @@ class MarkdownParser {
 
         // Tables (process third, before inline formatting that might interfere!)
         $text = preg_replace_callback(
-            '/^[ \t]*(\|.+\|)[ \t]*\n[ \t]*(\|[-: \t|]+\|)[ \t]*\n((?:[ \t]*\|.+\|[ \t]*\n?)+)/m',
+            '/^[ \t]*(\|.+\|)[ \t]*\r?\n[ \t]*(\|[-: \t|]+\|)[ \t]*\r?\n((?:[ \t]*\|.+\|[ \t]*\r?\n?)+)/m',
             function($matches) {
                 $headerLine = trim($matches[1]);
                 $bodyLines = trim($matches[3]);
@@ -99,12 +99,30 @@ class MarkdownParser {
         // Images: ![alt](url)
         $text = preg_replace('/!\[([^\]]*)\]\(([^\)]+)\)/', '<img src="$2" alt="$1" />', $text);
 
-        // Unordered lists
+        // Unordered lists (with support for task lists/checkboxes)
         $text = preg_replace_callback(
-            '/((?:^[\*\-\+]\s+.+$\n?)+)/m',
+            '/((?:^[\*\-\+]\s+.+$\r?\n?)+)/m',
             function($matches) {
-                $items = preg_replace('/^[\*\-\+]\s+(.+)$/m', '<li>$1</li>', $matches[1]);
-                return '<ul>' . $items . '</ul>';
+                // Check if this is a task list (contains checkboxes)
+                $hasCheckboxes = preg_match('/\[[ xX]\]/', $matches[1]);
+                $listClass = $hasCheckboxes ? ' class="task-list"' : '';
+
+                // Process list items
+                $items = preg_replace_callback(
+                    '/^[\*\-\+]\s+(.+)$/m',
+                    function($m) {
+                        // Check for checkbox syntax: [ ] or [x]
+                        if (preg_match('/^\[( |x|X)\]\s+(.+)$/', $m[1], $checkbox)) {
+                            $checked = ($checkbox[1] !== ' ') ? ' checked' : '';
+                            $checkboxHtml = '<input type="checkbox" disabled' . $checked . '>';
+                            return '<li class="task-list-item">' . $checkboxHtml . '<span>' . $checkbox[2] . '</span></li>';
+                        }
+                        return '<li>' . $m[1] . '</li>';
+                    },
+                    $matches[1]
+                );
+
+                return '<ul' . $listClass . '>' . $items . '</ul>';
             },
             $text
         );

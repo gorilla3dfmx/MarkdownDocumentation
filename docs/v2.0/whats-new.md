@@ -96,12 +96,12 @@ $user->name;
 
 ## Upgrade Checklist
 
-- [ ] Update PHP to 8.1 or higher
+- [X] Update PHP to 8.1 or higher
 - [ ] Update composer dependencies
 - [ ] Update configuration files
 - [ ] Run database migrations
 - [ ] Update deprecated code
-- [ ] Run test suite
+- [X] Run test suite
 
 ## Performance Benchmarks
 
