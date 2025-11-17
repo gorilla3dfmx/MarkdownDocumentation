@@ -1,0 +1,362 @@
+/* Custom styles for Documentation Framework with Bootstrap 5 - Dark Mode */
+
+/* Dark mode color variables */
+:root {
+    --bg-primary: #0d1117;
+    --bg-secondary: #161b22;
+    --bg-tertiary: #21262d;
+    --border-color: #30363d;
+    --text-primary: #c9d1d9;
+    --text-secondary: #8b949e;
+    --accent-blue: #58a6ff;
+    --accent-purple: #bc8cff;
+}
+
+/* Hover effects */
+.hover-shadow {
+    transition: box-shadow 0.3s ease-in-out;
+}
+
+.hover-shadow:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Tree navigation */
+.tree-toggle i {
+    transition: transform 0.2s;
+    color: var(--text-secondary);
+}
+
+.tree-toggle.open i {
+    transform: rotate(90deg);
+}
+
+.tree-children {
+    transition: all 0.3s ease;
+}
+
+/* Markdown content styling - Dark Mode */
+.markdown-content {
+    color: var(--text-primary);
+}
+
+.markdown-content h1 {
+    font-size: 2.5rem;
+    margin: 2rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--border-color);
+    color: var(--accent-blue);
+}
+
+.markdown-content h2 {
+    font-size: 2rem;
+    margin: 1.5rem 0 1rem;
+    color: var(--accent-blue);
+}
+
+.markdown-content h3 {
+    font-size: 1.5rem;
+    margin: 1.25rem 0 0.75rem;
+    color: var(--accent-purple);
+}
+
+.markdown-content h4 {
+    font-size: 1.25rem;
+    margin: 1rem 0 0.5rem;
+    color: var(--text-primary);
+}
+
+.markdown-content h5 {
+    font-size: 1.1rem;
+    margin: 0.75rem 0 0.5rem;
+    color: var(--text-primary);
+}
+
+.markdown-content h6 {
+    font-size: 1rem;
+    margin: 0.5rem 0;
+    color: var(--text-primary);
+}
+
+.markdown-content p {
+    margin: 1rem 0;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.markdown-content code {
+    background: var(--bg-tertiary);
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9em;
+    color: #ff7b72;
+    border: 1px solid var(--border-color);
+}
+
+.markdown-content pre {
+    background: var(--bg-secondary);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    border: 1px solid var(--border-color);
+}
+
+.markdown-content pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+    border: none;
+}
+
+.markdown-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+    border: 1px solid var(--border-color);
+}
+
+.markdown-content a {
+    color: var(--accent-blue);
+    text-decoration: none;
+}
+
+.markdown-content a:hover {
+    text-decoration: underline;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+    margin: 1rem 0;
+    padding-left: 2rem;
+    color: var(--text-primary);
+}
+
+.markdown-content ul li,
+.markdown-content ol li {
+    margin: 0.5rem 0;
+}
+
+.markdown-content blockquote {
+    border-left: 4px solid var(--accent-blue);
+    padding-left: 1rem;
+    margin: 1rem 0;
+    color: var(--text-secondary);
+    font-style: italic;
+    background: var(--bg-secondary);
+    padding: 0.75rem 1rem;
+    border-radius: 0 0.25rem 0.25rem 0;
+}
+
+.markdown-content table {
+    width: 100%;
+    margin: 1rem 0;
+    border-collapse: collapse;
+}
+
+.markdown-content table.markdown-table {
+    border: 1px solid var(--border-color);
+}
+
+.markdown-content table th,
+.markdown-content table td {
+    border: 1px solid var(--border-color);
+    padding: 0.75rem;
+    text-align: left;
+}
+
+.markdown-content table th {
+    background: var(--bg-secondary);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.markdown-content table td {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.markdown-content hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 2rem 0;
+}
+
+/* Table of contents - Dark Mode */
+.toc-nav a {
+    transition: color 0.2s;
+    color: var(--text-primary) !important;
+}
+
+.toc-nav a:hover {
+    color: var(--accent-blue) !important;
+}
+
+.toc-level-1 {
+    font-weight: 600;
+}
+
+.toc-level-2 {
+    padding-left: 1rem;
+}
+
+.toc-level-3 {
+    padding-left: 2rem;
+}
+
+/* Search result highlighting */
+.result-snippet mark {
+    background: #58a6ff33;
+    padding: 0.1rem 0.2rem;
+    border-radius: 0.125rem;
+    font-weight: 600;
+    color: var(--accent-blue);
+}
+
+/* Sticky sidebar */
+.sticky-top {
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+}
+
+/* Custom scrollbar for dark mode */
+.sticky-top::-webkit-scrollbar {
+    width: 8px;
+}
+
+.sticky-top::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+.sticky-top::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.sticky-top::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Heading anchors */
+.heading-anchor {
+    margin-left: 0.5rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+h1:hover .heading-anchor,
+h2:hover .heading-anchor,
+h3:hover .heading-anchor {
+    opacity: 1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 991px) {
+    .sidebar {
+        position: relative !important;
+        max-height: none !important;
+    }
+}
+
+/* Editor textarea - Dark Mode */
+#markdown-editor {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.95rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+#markdown-editor:focus {
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(88, 166, 255, 0.25);
+    border-color: var(--accent-blue);
+}
+
+/* Code block syntax highlighting adjustments */
+.hljs {
+    background: var(--bg-secondary) !important;
+}
+
+/* Cards - Dark Mode */
+.card {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+.card-header {
+    border-bottom-color: var(--border-color);
+}
+
+.card-footer {
+    border-top-color: var(--border-color);
+}
+
+/* Buttons - Dark Mode enhancements */
+.btn-outline-secondary {
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--bg-tertiary);
+    border-color: var(--text-secondary);
+    color: var(--text-primary);
+}
+
+/* Form controls - Dark Mode */
+.form-control,
+.form-select {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--bg-tertiary);
+    border-color: var(--accent-blue);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 0.2rem rgba(88, 166, 255, 0.25);
+}
+
+/* Alert - Dark Mode */
+.alert-info {
+    background-color: #1f6feb22;
+    border-color: #1f6feb;
+    color: var(--accent-blue);
+}
+
+/* Navbar brand enhancement */
+.navbar-brand {
+    color: var(--accent-blue) !important;
+}
+
+/* Print styles */
+@media print {
+    .navbar,
+    .sidebar,
+    .page-actions,
+    .toc-nav,
+    footer {
+        display: none !important;
+    }
+
+    .markdown-content {
+        max-width: 100% !important;
+    }
+
+    body {
+        background: white !important;
+        color: black !important;
+    }
+}
