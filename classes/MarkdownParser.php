@@ -93,11 +93,35 @@ class MarkdownParser {
         $text = preg_replace('/^##\s+(.+)$/m', '<h2>$1</h2>', $text);
         $text = preg_replace('/^#\s+(.+)$/m', '<h1>$1</h1>', $text);
 
-        // Links: [text](url)
-        $text = preg_replace('/\[([^\]]+)\]\(([^\)]+)\)/', '<a href="$2">$1</a>', $text);
+        // Images: ![alt](url) - MUST process before links!
+        $text = preg_replace_callback(
+            '/!\[([^\]]*)\]\(([^\)]+)\)/',
+            function($matches) {
+                $alt = $matches[1];
+                $url = $matches[2];
+                // Add base URL for relative images starting with docs/ or data/
+                if (preg_match('#^(docs/|data/)#', $url)) {
+                    $url = Url::to('/' . $url);
+                }
+                return '<img src="' . $url . '" alt="' . $alt . '" />';
+            },
+            $text
+        );
 
-        // Images: ![alt](url)
-        $text = preg_replace('/!\[([^\]]*)\]\(([^\)]+)\)/', '<img src="$2" alt="$1" />', $text);
+        // Links: [text](url)
+        $text = preg_replace_callback(
+            '/\[([^\]]+)\]\(([^\)]+)\)/',
+            function($matches) {
+                $text = $matches[1];
+                $url = $matches[2];
+                // Add base URL for relative links starting with docs/ or data/
+                if (preg_match('#^(docs/|data/)#', $url)) {
+                    $url = Url::to('/' . $url);
+                }
+                return '<a href="' . $url . '">' . $text . '</a>';
+            },
+            $text
+        );
 
         // Unordered lists (with support for task lists/checkboxes)
         $text = preg_replace_callback(

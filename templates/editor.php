@@ -57,7 +57,7 @@ ob_start();
                         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertMarkdown('[', '](url)')" title="Link">
                             <i class="bi bi-link-45deg"></i>
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertMarkdown('![', '](url)')" title="Image">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openImageModal()" title="Insert Image">
                             <i class="bi bi-image"></i>
                         </button>
                     </div>
@@ -116,6 +116,62 @@ ob_start();
                     </button>
                 </div>
             </form>
+
+            <!-- Image Gallery Modal -->
+            <div class="modal fade" id="imageModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content bg-dark">
+                        <div class="modal-header border-secondary">
+                            <h5 class="modal-title"><i class="bi bi-image"></i> Insert Image</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <ul class="nav nav-tabs mb-3" role="tablist">
+                                <li class="nav-item">
+                                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#upload-tab">
+                                        <i class="bi bi-upload"></i> Upload
+                                    </button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#gallery-tab" onclick="loadImageGallery()">
+                                        <i class="bi bi-images"></i> Gallery
+                                    </button>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content">
+                                <!-- Upload Tab -->
+                                <div class="tab-pane fade show active" id="upload-tab">
+                                    <div class="mb-3">
+                                        <label for="imageFile" class="form-label">Choose an image</label>
+                                        <input type="file" class="form-control" id="imageFile" accept="image/*">
+                                        <div class="form-text">Max 5MB. Formats: JPG, PNG, GIF, WebP</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="imageAlt" class="form-label">Alt Text (optional)</label>
+                                        <input type="text" class="form-control" id="imageAlt" placeholder="Describe the image">
+                                    </div>
+                                    <button type="button" class="btn btn-primary" onclick="uploadImage()">
+                                        <i class="bi bi-upload"></i> Upload & Insert
+                                    </button>
+                                    <div id="uploadStatus" class="mt-2"></div>
+                                </div>
+
+                                <!-- Gallery Tab -->
+                                <div class="tab-pane fade" id="gallery-tab">
+                                    <div id="imageGallery" class="row g-3">
+                                        <div class="col-12 text-center text-muted">
+                                            <div class="spinner-border" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -172,6 +228,119 @@ function insertMarkdown(before, after) {
     editor.focus();
     editor.selectionStart = start + before.length;
     editor.selectionEnd = start + before.length + selectedText.length;
+
+    updatePreview();
+}
+
+// Image modal functions
+let imageModal;
+
+function openImageModal() {
+    if (!imageModal) {
+        imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+    }
+    imageModal.show();
+}
+
+function uploadImage() {
+    const fileInput = document.getElementById('imageFile');
+    const altText = document.getElementById('imageAlt').value || 'image';
+    const statusDiv = document.getElementById('uploadStatus');
+
+    if (!fileInput.files || !fileInput.files[0]) {
+        statusDiv.innerHTML = '<div class="alert alert-warning">Please select an image</div>';
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('image', fileInput.files[0]);
+
+    statusDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Uploading...</div>';
+
+    fetch('<?= Url::to('/upload-image') ?>', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            statusDiv.innerHTML = '<div class="alert alert-success"><i class="bi bi-check-circle"></i> Image uploaded successfully!</div>';
+
+            // Insert markdown
+            const imageMd = `![${altText}](${data.path})`;
+            insertImageMarkdown(imageMd);
+
+            // Reset form
+            fileInput.value = '';
+            document.getElementById('imageAlt').value = '';
+
+            // Close modal after short delay
+            setTimeout(() => {
+                imageModal.hide();
+                statusDiv.innerHTML = '';
+            }, 1000);
+        } else {
+            statusDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> ${data.error}</div>`;
+        }
+    })
+    .catch(error => {
+        statusDiv.innerHTML = '<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> Upload failed</div>';
+    });
+}
+
+function loadImageGallery() {
+    const galleryDiv = document.getElementById('imageGallery');
+    galleryDiv.innerHTML = '<div class="col-12 text-center text-muted"><div class="spinner-border" role="status"></div></div>';
+
+    fetch('<?= Url::to('/images/list') ?>')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.images.length > 0) {
+            let html = '';
+            data.images.forEach(img => {
+                const sizeKB = Math.round(img.size / 1024);
+                html += `
+                    <div class="col-md-4 col-lg-3">
+                        <div class="card bg-secondary h-100 image-card" onclick="selectImage('${img.path}', '${img.filename}')">
+                            <img src="<?= Url::to('/') ?>${img.path}" class="card-img-top" alt="${img.filename}" style="height: 150px; object-fit: cover; cursor: pointer;">
+                            <div class="card-body p-2">
+                                <small class="text-truncate d-block" title="${img.filename}">${img.filename}</small>
+                                <small class="text-muted">${sizeKB} KB</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            galleryDiv.innerHTML = html;
+        } else {
+            galleryDiv.innerHTML = '<div class="col-12 text-center text-muted">No images uploaded yet</div>';
+        }
+    })
+    .catch(error => {
+        galleryDiv.innerHTML = '<div class="col-12 text-center text-danger">Failed to load gallery</div>';
+    });
+}
+
+function selectImage(path, filename) {
+    const altText = prompt('Enter alt text for the image:', filename.replace(/\.[^/.]+$/, ''));
+    if (altText !== null) {
+        const imageMd = `![${altText || 'image'}](${path})`;
+        insertImageMarkdown(imageMd);
+        imageModal.hide();
+    }
+}
+
+function insertImageMarkdown(markdown) {
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    const text = editor.value;
+
+    const newText = text.substring(0, start) + markdown + text.substring(end);
+    editor.value = newText;
+
+    editor.focus();
+    editor.selectionStart = start + markdown.length;
+    editor.selectionEnd = start + markdown.length;
 
     updatePreview();
 }

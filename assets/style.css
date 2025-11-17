@@ -375,6 +375,17 @@ h3:hover .heading-anchor {
     color: var(--accent-blue) !important;
 }
 
+/* Image gallery in editor */
+.image-card {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.image-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3);
+}
+
 /* Print styles */
 @media print {
     .navbar,
