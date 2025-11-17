@@ -5,15 +5,25 @@ A complete PHP-based documentation website framework with versioning support, ma
 ## Features
 
 ✅ **Multi-version Documentation** - Manage documentation for different versions of your software
+
 ✅ **Markdown Support** - Full markdown rendering with syntax highlighting
+
 ✅ **Hierarchical Structure** - Organize documentation in folders and subfolders
+
 ✅ **Search Functionality** - Full-text search with SQLite FTS5
+
 ✅ **PDF Export** - Export documentation pages or entire versions to PDF
+
 ✅ **Editing Mode** - Built-in markdown editor with live preview (login required)
+
 ✅ **Navigation Tree** - Interactive tree view for easy navigation
+
 ✅ **Responsive Design** - Mobile-friendly Bootstrap 5 interface
+
 ✅ **Syntax Highlighting** - Code blocks with Highlight.js
+
 ✅ **Subfolder Support** - Works in subdirectories with automatic base path detection
+
 ✅ **Bootstrap Icons** - Beautiful icons throughout the interface
 
 ## Requirements
