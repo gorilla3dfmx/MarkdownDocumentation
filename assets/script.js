@@ -90,8 +90,8 @@ function addHeadingAnchors() {
         const id = heading.textContent
             .toLowerCase()
             .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .trim();
+            .replace(/[\s-]+/g, '-')
+            .replace(/^-+|-+$/g, '');
 
         heading.id = id;
 

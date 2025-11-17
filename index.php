@@ -35,6 +35,7 @@ $router->get('/logout', 'AuthController@logout');
 // Editor routes (protected)
 $router->get('/edit/{version}/{path}', 'EditorController@edit');
 $router->post('/edit/{version}/{path}', 'EditorController@save');
+$router->post('/preview', 'EditorController@preview');
 
 // Dispatch request
 $router->dispatch();

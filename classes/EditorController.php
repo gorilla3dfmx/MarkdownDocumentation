@@ -57,4 +57,13 @@ class EditorController {
 
         Url::redirect('/edit/' . urlencode($version) . '/' . urlencode($pagePath));
     }
+
+    public function preview($params) {
+        Auth::requireAuth();
+
+        header('Content-Type: text/html');
+        $markdown = $_POST['markdown'] ?? '';
+        echo MarkdownParser::parse($markdown);
+        exit;
+    }
 }

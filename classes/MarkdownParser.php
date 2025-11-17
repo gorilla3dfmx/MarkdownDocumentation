@@ -20,20 +20,11 @@ class MarkdownParser {
 
     private static function parseMarkdown($text) {
         // Simple markdown parser implementation
-        // Bold: **text** or __text__
-        $text = preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', $text);
-        $text = preg_replace('/__(.+?)__/', '<strong>$1</strong>', $text);
+        // IMPORTANT: Process code blocks and inline code FIRST to protect them from other formatting
 
-        // Italic: *text* or _text_
-        $text = preg_replace('/\*(.+?)\*/', '<em>$1</em>', $text);
-        $text = preg_replace('/_(.+?)_/', '<em>$1</em>', $text);
-
-        // Underline: ++text++
-        $text = preg_replace('/\+\+(.+?)\+\+/', '<u>$1</u>', $text);
-
-        // Code blocks with language
+        // Code blocks with language (process first!)
         $text = preg_replace_callback(
-            '/```(\w+)?\n(.*?)```/s',
+            '/```(\w+)?\s*\n(.*?)\n```/s',
             function($matches) {
                 $lang = $matches[1] ?: 'text';
                 $code = htmlspecialchars($matches[2]);
@@ -42,8 +33,57 @@ class MarkdownParser {
             $text
         );
 
-        // Inline code: `code`
+        // Inline code: `code` (process second!)
         $text = preg_replace('/`([^`]+)`/', '<code>$1</code>', $text);
+
+        // Tables (process third, before inline formatting that might interfere!)
+        $text = preg_replace_callback(
+            '/^[ \t]*(\|.+\|)[ \t]*\n[ \t]*(\|[-: \t|]+\|)[ \t]*\n((?:[ \t]*\|.+\|[ \t]*\n?)+)/m',
+            function($matches) {
+                $headerLine = trim($matches[1]);
+                $bodyLines = trim($matches[3]);
+
+                // Parse header
+                $headerCells = array_filter(array_map('trim', explode('|', trim($headerLine, '|'))));
+
+                $html = '<table class="markdown-table">';
+                $html .= '<thead><tr>';
+                foreach ($headerCells as $cell) {
+                    $html .= '<th>' . trim($cell) . '</th>';
+                }
+                $html .= '</tr></thead>';
+
+                // Parse body rows
+                $html .= '<tbody>';
+                $rows = explode("\n", $bodyLines);
+                foreach ($rows as $row) {
+                    $row = trim($row);
+                    if (empty($row)) continue;
+
+                    $cells = array_filter(array_map('trim', explode('|', trim($row, '|'))));
+                    $html .= '<tr>';
+                    foreach ($cells as $cell) {
+                        $html .= '<td>' . trim($cell) . '</td>';
+                    }
+                    $html .= '</tr>';
+                }
+                $html .= '</tbody></table>';
+
+                return "\n" . $html . "\n";
+            },
+            $text
+        );
+
+        // Bold: **text** or __text__
+        $text = preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', $text);
+        $text = preg_replace('/__(.+?)__/', '<strong>$1</strong>', $text);
+
+        // Italic: *text* or _text_ (avoid matching already processed bold)
+        $text = preg_replace('/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/', '<em>$1</em>', $text);
+        $text = preg_replace('/(?<!_)_(?!_)(.+?)(?<!_)_(?!_)/', '<em>$1</em>', $text);
+
+        // Underline: ++text++
+        $text = preg_replace('/\+\+(.+?)\+\+/', '<u>$1</u>', $text);
 
         // Headers
         $text = preg_replace('/^######\s+(.+)$/m', '<h6>$1</h6>', $text);

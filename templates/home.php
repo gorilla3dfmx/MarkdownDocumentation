@@ -16,7 +16,7 @@ ob_start();
             <strong>No documentation found.</strong> Please add markdown files to the <code>docs/</code> directory.
         </div>
     <?php else: ?>
-        <div class="row g-4">
+        <div class="row g-4 justify-content-center">
             <?php foreach ($versions as $version): ?>
                 <div class="col-md-6 col-lg-4">
                     <div class="card h-100 shadow-sm hover-shadow">

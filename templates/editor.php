@@ -124,11 +124,36 @@ ob_start();
 // Live preview
 const editor = document.getElementById('markdown-editor');
 const preview = document.getElementById('markdown-preview');
+let updateTimeout;
 
 function updatePreview() {
-    const markdown = editor.value;
-    // For now, show raw markdown (in production, you could add AJAX call to render)
-    preview.textContent = markdown;
+    clearTimeout(updateTimeout);
+    updateTimeout = setTimeout(() => {
+        const markdown = editor.value;
+
+        // Send AJAX request to render markdown
+        fetch('<?= Url::to('/preview') ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'markdown=' + encodeURIComponent(markdown)
+        })
+        .then(response => response.text())
+        .then(html => {
+            preview.innerHTML = html;
+            // Re-apply syntax highlighting if hljs is available
+            if (typeof hljs !== 'undefined') {
+                preview.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Preview error:', error);
+            preview.textContent = 'Error loading preview';
+        });
+    }, 300); // Debounce for 300ms
 }
 
 editor.addEventListener('input', updatePreview);
