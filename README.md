@@ -26,6 +26,8 @@ A complete PHP-based documentation website framework with versioning support, ma
 
 ✅ **Bootstrap Icons** - Beautiful icons throughout the interface
 
+✅ **Easy Image Integration** - Editing Mode with easy image upload and inserting
+
 ## Requirements
 
 - PHP 7.4 or higher
