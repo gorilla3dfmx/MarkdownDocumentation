@@ -28,6 +28,8 @@ A complete PHP-based documentation website framework with versioning support, ma
 
 ✅ **Easy Image Integration** - Editing Mode with easy image upload and inserting
 
+✅ **Create, Delete Pages & Directories** - In logged in mode you're able to easily add/delete pages and directories over the web-ui
+
 ## Requirements
 
 - PHP 7.4 or higher
