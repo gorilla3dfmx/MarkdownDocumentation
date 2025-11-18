@@ -52,7 +52,7 @@ class SearchIndex {
 
         $title = MarkdownParser::extractTitle($markdown);
         $content = strip_tags(MarkdownParser::parse($markdown));
-        $url = Url::to('/version/' . urlencode($version) . '/page/' . urlencode($pagePath));
+        $url = Url::to('/version/' . urlencode($version) . '/page/' . $pagePath);
 
         // Insert or update in main index
         $stmt = $db->prepare("

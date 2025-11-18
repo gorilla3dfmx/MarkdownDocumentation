@@ -18,7 +18,7 @@ ob_start();
                         </small>
                     </div>
                 </div>
-                <a href="<?= Url::to('/version/' . urlencode($version) . '/page/' . urlencode($pagePath)) ?>" class="btn btn-outline-secondary">
+                <a href="<?= Url::to('/version/' . urlencode($version) . '/page/' . $pagePath) ?>" class="btn btn-outline-secondary">
                     <i class="bi bi-x-circle"></i> Cancel
                 </a>
             </div>
@@ -39,7 +39,7 @@ ob_start();
                 </div>
             <?php endif; ?>
 
-            <form method="POST" action="<?= Url::to('/edit/' . urlencode($version) . '/' . urlencode($pagePath)) ?>">
+            <form method="POST" action="<?= Url::to('/edit/' . urlencode($version) . '/' . $pagePath) ?>">
                 <!-- Editor Toolbar -->
                 <div class="btn-toolbar mb-3 bg-light p-2 rounded" role="toolbar">
                     <div class="btn-group me-2" role="group">
@@ -108,7 +108,7 @@ ob_start();
 
                 <!-- Save Button -->
                 <div class="d-flex justify-content-between mt-3">
-                    <a href="<?= Url::to('/version/' . urlencode($version) . '/page/' . urlencode($pagePath)) ?>" class="btn btn-outline-secondary">
+                    <a href="<?= Url::to('/version/' . urlencode($version) . '/page/' . $pagePath) ?>" class="btn btn-outline-secondary">
                         <i class="bi bi-x-circle"></i> Cancel
                     </a>
                     <button type="submit" class="btn btn-primary btn-lg">

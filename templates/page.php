@@ -47,14 +47,14 @@ ob_start();
                 <!-- Page Actions -->
                 <div class="d-flex justify-content-end gap-2 mb-3">
                     <?php if ($authenticated ?? false): ?>
-                        <a href="<?= Url::to('/edit/' . urlencode($version) . '/' . urlencode($pagePath)) ?>" class="btn btn-sm btn-outline-primary">
+                        <a href="<?= Url::to('/edit/' . urlencode($version) . '/' . $pagePath) ?>" class="btn btn-sm btn-outline-primary">
                             <i class="bi bi-pencil"></i> Edit
                         </a>
                         <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDeletePage()">
                             <i class="bi bi-trash"></i> Delete
                         </button>
                     <?php endif; ?>
-                    <a href="<?= Url::to('/export/pdf?version=' . urlencode($version) . '&pages[]=' . urlencode($pagePath)) ?>" class="btn btn-sm btn-outline-secondary" target="_blank">
+                    <a href="<?= Url::to('/export/pdf?version=' . urlencode($version) . '&pages[]=' . $pagePath) ?>" class="btn btn-sm btn-outline-secondary" target="_blank">
                         <i class="bi bi-file-pdf"></i> Export PDF
                     </a>
                 </div>

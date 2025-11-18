@@ -55,7 +55,7 @@ class EditorController {
             $_SESSION['edit_error'] = 'Failed to save page';
         }
 
-        Url::redirect('/edit/' . urlencode($version) . '/' . urlencode($pagePath));
+        Url::redirect('/edit/' . urlencode($version) . '/' . $pagePath);
     }
 
     public function preview($params) {
