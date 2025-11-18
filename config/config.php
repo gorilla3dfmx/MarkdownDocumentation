@@ -22,7 +22,7 @@ define('AUTH_USERNAME', 'admin');
 define('AUTH_PASSWORD', password_hash('admin123', PASSWORD_DEFAULT)); // Change this!
 
 // Application settings
-define('SITE_TITLE', 'Documentation');
+define('SITE_TITLE', 'Gorilla3D Framework - Documentation');
 define('ITEMS_PER_PAGE', 20);
 
 // PDF settings

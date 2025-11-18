@@ -2,6 +2,9 @@
 
 RewriteEngine On
 
+# Don't rewrite API directory - let PHP files handle directly
+RewriteCond %{REQUEST_URI} !^/api/
+
 # Redirect to index.php for all requests except existing files
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

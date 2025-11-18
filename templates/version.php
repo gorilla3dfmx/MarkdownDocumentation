@@ -21,9 +21,21 @@ ob_start();
 
                 <!-- Navigation Tree -->
                 <div class="px-3">
-                    <h6 class="fw-bold small text-secondary mb-3">NAVIGATION</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold small text-secondary mb-0">NAVIGATION</h6>
+                        <?php if ($authenticated ?? false): ?>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#createPageModal" title="Add New Page">
+                                    <i class="bi bi-file-plus"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#createDirectoryModal" title="Add New Directory">
+                                    <i class="bi bi-folder-plus"></i>
+                                </button>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                     <?php if (!empty($tree)): ?>
-                        <?php echo renderTree($tree); ?>
+                        <?php echo renderTree($tree, '', 0, $authenticated ?? false, $version); ?>
                     <?php else: ?>
                         <p class="text-muted small">No pages found.</p>
                     <?php endif; ?>
@@ -97,14 +109,136 @@ ob_start();
     </div>
 </div>
 
+<!-- Create Page Modal -->
+<?php if ($authenticated ?? false): ?>
+<div class="modal fade" id="createPageModal" tabindex="-1" aria-labelledby="createPageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="createPageModalLabel">
+                    <i class="bi bi-file-plus text-success"></i> Add New Page
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createPageForm">
+                    <div class="mb-3">
+                        <label for="pageVersion" class="form-label">Version <span class="text-danger">*</span></label>
+                        <select class="form-select" id="pageVersion" name="version" required>
+                            <option value="<?= View::escape($version) ?>" selected><?= View::escape($version) ?></option>
+                            <?php foreach ($versions as $v): ?>
+                                <?php if ($v['name'] !== $version): ?>
+                                    <option value="<?= View::escape($v['name']) ?>"><?= View::escape($v['display']) ?></option>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text">Select the version where the page should be created</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="pageLocation" class="form-label">Location (Directory)</label>
+                        <select class="form-select" id="pageLocation" name="directory">
+                            <option value="">/ (Root - Top level)</option>
+                        </select>
+                        <div class="form-text">Select the directory where the page should be created. Choose root for top-level pages.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="pageFilename" class="form-label">Page Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="pageFilename" name="filename" required
+                               placeholder="e.g., getting-started or installation-guide">
+                        <div class="form-text">Enter the page name (will be used as filename). Use hyphens for spaces. Extension .md will be added automatically.</div>
+                    </div>
+
+                    <div class="alert alert-info small">
+                        <i class="bi bi-info-circle"></i> The page will be created with a default template and you'll be redirected to it.
+                    </div>
+
+                    <div id="createPageError" class="alert alert-danger" style="display: none;"></div>
+                </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="createPageBtn">
+                    <i class="bi bi-plus-circle"></i> Create Page
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Directory Modal -->
+<div class="modal fade" id="createDirectoryModal" tabindex="-1" aria-labelledby="createDirectoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="createDirectoryModalLabel">
+                    <i class="bi bi-folder-plus text-info"></i> Add New Directory
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createDirectoryForm">
+                    <div class="mb-3">
+                        <label for="dirVersion" class="form-label">Version <span class="text-danger">*</span></label>
+                        <select class="form-select" id="dirVersion" name="version" required>
+                            <option value="<?= View::escape($version) ?>" selected><?= View::escape($version) ?></option>
+                            <?php foreach ($versions as $v): ?>
+                                <?php if ($v['name'] !== $version): ?>
+                                    <option value="<?= View::escape($v['name']) ?>"><?= View::escape($v['display']) ?></option>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text">Select the version where the directory should be created</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="dirParentLocation" class="form-label">Parent Directory</label>
+                        <select class="form-select" id="dirParentLocation" name="parent_directory">
+                            <option value="">/ (Root - Top level)</option>
+                        </select>
+                        <div class="form-text">Select the parent directory. Choose root to create a top-level directory.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="dirName" class="form-label">Directory Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="dirName" name="directory_name" required
+                               placeholder="e.g., advanced or api-reference">
+                        <div class="form-text">Enter the directory name. Use hyphens for spaces. Only letters, numbers, hyphens, and underscores allowed.</div>
+                    </div>
+
+                    <div class="alert alert-info small">
+                        <i class="bi bi-info-circle"></i> The directory will be created immediately and will appear in the navigation tree.
+                    </div>
+
+                    <div id="createDirectoryError" class="alert alert-danger" style="display: none;"></div>
+                </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-info" id="createDirectoryBtn">
+                    <i class="bi bi-plus-circle"></i> Create Directory
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Store current version for JavaScript use
+window.currentVersion = <?= json_encode($version) ?>;
+</script>
+<?php endif; ?>
+
 <?php
-function renderTree($tree, $level = 0) {
+function renderTree($tree, $currentPath = '', $level = 0, $authenticated = false, $version = '') {
     $html = '<ul class="list-unstyled tree-list' . ($level > 0 ? ' ms-3' : '') . '">';
 
     foreach ($tree as $item) {
         $html .= '<li class="mb-1">';
 
         if ($item['type'] === 'folder') {
+            $html .= '<div class="d-flex align-items-center justify-content-between">';
             $html .= '<div class="d-flex align-items-center">';
             $html .= '<span class="tree-toggle me-1" onclick="toggleFolder(this)" style="cursor: pointer; user-select: none;">
                         <i class="bi bi-chevron-right"></i>
@@ -113,9 +247,19 @@ function renderTree($tree, $level = 0) {
             $html .= '<span class="text-secondary small">' . View::escape($item['display']) . '</span>';
             $html .= '</div>';
 
+            // Add delete button for folders (only when authenticated)
+            if ($authenticated) {
+                $folderPath = $item['path'];
+                $html .= '<button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2" style="font-size: 0.8rem;" onclick="confirmDeleteFolder(\'' . htmlspecialchars($version, ENT_QUOTES) . '\', \'' . htmlspecialchars($folderPath, ENT_QUOTES) . '\', event)" title="Delete folder">
+                            <i class="bi bi-trash"></i>
+                          </button>';
+            }
+
+            $html .= '</div>';
+
             if (!empty($item['children'])) {
                 $html .= '<div class="tree-children" style="display: none;">';
-                $html .= renderTree($item['children'], $level + 1);
+                $html .= renderTree($item['children'], $currentPath, $level + 1, $authenticated, $version);
                 $html .= '</div>';
             }
         } else {

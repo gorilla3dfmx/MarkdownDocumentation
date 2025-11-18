@@ -42,5 +42,11 @@ $router->post('/upload-image', 'ImageController@upload');
 $router->get('/images/list', 'ImageController@list');
 $router->post('/images/delete', 'ImageController@delete');
 
+// File management routes (protected)
+$router->get('/api/directory-tree', 'FileManagerController@getDirectoryTree');
+$router->get('/api/versions', 'FileManagerController@getVersions');
+$router->post('/api/create-page', 'FileManagerController@createPage');
+$router->post('/api/create-directory', 'FileManagerController@createDirectory');
+
 // Dispatch request
 $router->dispatch();
