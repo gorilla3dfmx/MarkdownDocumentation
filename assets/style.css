@@ -134,6 +134,14 @@
     color: var(--text-primary);
 }
 
+/* Nested lists should have less top/bottom margin */
+.markdown-content ul ul,
+.markdown-content ul ol,
+.markdown-content ol ul,
+.markdown-content ol ol {
+    margin: 0.25rem 0;
+}
+
 .markdown-content ul li,
 .markdown-content ol li {
     margin: 0.5rem 0;

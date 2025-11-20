@@ -1,220 +1,75 @@
 <?php
 /**
  * Markdown Parser using Parsedown
- * This is a lightweight implementation
+ * Provides full markdown support including nested lists
  */
+
+// Load Parsedown library
+require_once __DIR__ . '/../parsedown/Parsedown.php';
+
 class MarkdownParser {
 
-    public static function parse($markdown) {
-        $html = self::parseMarkdown($markdown);
+    private static $parsedown = null;
 
-        // Add syntax highlighting class to code blocks
+    private static function getParsedown() {
+        if (self::$parsedown === null) {
+            self::$parsedown = new Parsedown();
+            self::$parsedown->setSafeMode(false); // Allow HTML in markdown
+            self::$parsedown->setBreaksEnabled(false); // Standard markdown line breaks
+        }
+        return self::$parsedown;
+    }
+
+    public static function parse($markdown) {
+        $parsedown = self::getParsedown();
+
+        // Use Parsedown to convert markdown to HTML
+        $html = $parsedown->text($markdown);
+
+        // Post-process: Add syntax highlighting class to code blocks
         $html = preg_replace(
-            '/<pre><code class="language-([^"]+)">/',
-            '<pre><code class="language-$1 hljs">',
+            '/<code class="language-([^"]+)">/',
+            '<code class="language-$1 hljs">',
             $html
         );
+
+        // Post-process: Handle relative URLs for images and links
+        $html = self::processRelativeUrls($html);
+
+        // Post-process: Add markdown-table class to tables
+        $html = preg_replace('/<table>/', '<table class="markdown-table">', $html);
 
         return $html;
     }
 
-    private static function parseMarkdown($text) {
-        // Simple markdown parser implementation
-        // IMPORTANT: Process code blocks and inline code FIRST to protect them from other formatting
-
-        // Code blocks with language (process first!)
-        $text = preg_replace_callback(
-            '/```(\w+)?\s*\n(.*?)\n```/s',
+    private static function processRelativeUrls($html) {
+        // Fix relative image URLs starting with docs/ or data/
+        $html = preg_replace_callback(
+            '/<img src="([^"]+)"/',
             function($matches) {
-                $lang = $matches[1] ?: 'text';
-                $code = htmlspecialchars($matches[2]);
-                return '<pre><code class="language-' . $lang . '">' . $code . '</code></pre>';
-            },
-            $text
-        );
-
-        // Inline code: `code` (process second!)
-        $text = preg_replace('/`([^`]+)`/', '<code>$1</code>', $text);
-
-        // Tables (process third, before inline formatting that might interfere!)
-        $text = preg_replace_callback(
-            '/^[ \t]*(\|.+\|)[ \t]*\r?\n[ \t]*(\|[-: \t|]+\|)[ \t]*\r?\n((?:[ \t]*\|.+\|[ \t]*\r?\n?)+)/m',
-            function($matches) {
-                $headerLine = trim($matches[1]);
-                $bodyLines = trim($matches[3]);
-
-                // Parse header
-                $headerCells = array_filter(array_map('trim', explode('|', trim($headerLine, '|'))));
-
-                $html = '<table class="markdown-table">';
-                $html .= '<thead><tr>';
-                foreach ($headerCells as $cell) {
-                    $html .= '<th>' . trim($cell) . '</th>';
-                }
-                $html .= '</tr></thead>';
-
-                // Parse body rows
-                $html .= '<tbody>';
-                $rows = explode("\n", $bodyLines);
-                foreach ($rows as $row) {
-                    $row = trim($row);
-                    if (empty($row)) continue;
-
-                    $cells = array_filter(array_map('trim', explode('|', trim($row, '|'))));
-                    $html .= '<tr>';
-                    foreach ($cells as $cell) {
-                        $html .= '<td>' . trim($cell) . '</td>';
-                    }
-                    $html .= '</tr>';
-                }
-                $html .= '</tbody></table>';
-
-                return "\n" . $html . "\n";
-            },
-            $text
-        );
-
-        // Bold: **text** or __text__
-        $text = preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', $text);
-        $text = preg_replace('/__(.+?)__/', '<strong>$1</strong>', $text);
-
-        // Italic: *text* or _text_ (avoid matching already processed bold)
-        $text = preg_replace('/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/', '<em>$1</em>', $text);
-        $text = preg_replace('/(?<!_)_(?!_)(.+?)(?<!_)_(?!_)/', '<em>$1</em>', $text);
-
-        // Underline: ++text++
-        $text = preg_replace('/\+\+(.+?)\+\+/', '<u>$1</u>', $text);
-
-        // Headers
-        $text = preg_replace('/^######\s+(.+)$/m', '<h6>$1</h6>', $text);
-        $text = preg_replace('/^#####\s+(.+)$/m', '<h5>$1</h5>', $text);
-        $text = preg_replace('/^####\s+(.+)$/m', '<h4>$1</h4>', $text);
-        $text = preg_replace('/^###\s+(.+)$/m', '<h3>$1</h3>', $text);
-        $text = preg_replace('/^##\s+(.+)$/m', '<h2>$1</h2>', $text);
-        $text = preg_replace('/^#\s+(.+)$/m', '<h1>$1</h1>', $text);
-
-        // Images: ![alt](url) - MUST process before links!
-        $text = preg_replace_callback(
-            '/!\[([^\]]*)\]\(([^\)]+)\)/',
-            function($matches) {
-                $alt = $matches[1];
-                $url = $matches[2];
-                // Add base URL for relative images starting with docs/ or data/
+                $url = $matches[1];
                 if (preg_match('#^(docs/|data/)#', $url)) {
                     $url = Url::to('/' . $url);
                 }
-                return '<img src="' . $url . '" alt="' . $alt . '" />';
+                return '<img src="' . $url . '"';
             },
-            $text
+            $html
         );
 
-        // Links: [text](url)
-        $text = preg_replace_callback(
-            '/\[([^\]]+)\]\(([^\)]+)\)/',
+        // Fix relative link URLs starting with docs/ or data/
+        $html = preg_replace_callback(
+            '/<a href="([^"]+)"/',
             function($matches) {
-                $text = $matches[1];
-                $url = $matches[2];
-                // Add base URL for relative links starting with docs/ or data/
+                $url = $matches[1];
                 if (preg_match('#^(docs/|data/)#', $url)) {
                     $url = Url::to('/' . $url);
                 }
-                return '<a href="' . $url . '">' . $text . '</a>';
+                return '<a href="' . $url . '"';
             },
-            $text
+            $html
         );
 
-        // Unordered lists (with support for task lists/checkboxes)
-        $text = preg_replace_callback(
-            '/((?:^[\*\-\+]\s+.+$\r?\n?)+)/m',
-            function($matches) {
-                // Check if this is a task list (contains checkboxes)
-                $hasCheckboxes = preg_match('/\[[ xX]\]/', $matches[1]);
-                $listClass = $hasCheckboxes ? ' class="task-list"' : '';
-
-                // Process list items
-                $items = preg_replace_callback(
-                    '/^[\*\-\+]\s+(.+)$/m',
-                    function($m) {
-                        // Check for checkbox syntax: [ ] or [x]
-                        if (preg_match('/^\[( |x|X)\]\s+(.+)$/', $m[1], $checkbox)) {
-                            $checked = ($checkbox[1] !== ' ') ? ' checked' : '';
-                            $checkboxHtml = '<input type="checkbox" disabled' . $checked . '>';
-                            return '<li class="task-list-item">' . $checkboxHtml . '<span>' . $checkbox[2] . '</span></li>';
-                        }
-                        return '<li>' . $m[1] . '</li>';
-                    },
-                    $matches[1]
-                );
-
-                return '<ul' . $listClass . '>' . $items . '</ul>';
-            },
-            $text
-        );
-
-        // Ordered lists
-        $text = preg_replace_callback(
-            '/((?:^\d+\.\s+.+$\n?)+)/m',
-            function($matches) {
-                $items = preg_replace('/^\d+\.\s+(.+)$/m', '<li>$1</li>', $matches[1]);
-                return '<ol>' . $items . '</ol>';
-            },
-            $text
-        );
-
-        // Blockquotes
-        $text = preg_replace('/^>\s+(.+)$/m', '<blockquote>$1</blockquote>', $text);
-
-        // Horizontal rule
-        $text = preg_replace('/^[\-\*_]{3,}$/m', '<hr />', $text);
-
-        // Tables
-        $text = preg_replace_callback(
-            '/((?:^\|.+\|$\n?)+)/m',
-            function($matches) {
-                $lines = explode("\n", trim($matches[1]));
-                if (count($lines) < 2) return $matches[0];
-
-                $html = '<table class="markdown-table">';
-
-                // Header
-                $headerCells = array_map('trim', explode('|', trim($lines[0], '|')));
-                $html .= '<thead><tr>';
-                foreach ($headerCells as $cell) {
-                    $html .= '<th>' . trim($cell) . '</th>';
-                }
-                $html .= '</tr></thead>';
-
-                // Skip separator line (line 1)
-                // Body
-                $html .= '<tbody>';
-                for ($i = 2; $i < count($lines); $i++) {
-                    if (empty(trim($lines[$i]))) continue;
-                    $cells = array_map('trim', explode('|', trim($lines[$i], '|')));
-                    $html .= '<tr>';
-                    foreach ($cells as $cell) {
-                        $html .= '<td>' . trim($cell) . '</td>';
-                    }
-                    $html .= '</tr>';
-                }
-                $html .= '</tbody></table>';
-
-                return $html;
-            },
-            $text
-        );
-
-        // Paragraphs (double newline)
-        $text = preg_replace('/\n\n/', '</p><p>', $text);
-        $text = '<p>' . $text . '</p>';
-
-        // Clean up empty paragraphs and fix nesting
-        $text = preg_replace('/<p><\/p>/', '', $text);
-        $text = preg_replace('/<p>(<h[1-6]>)/', '$1', $text);
-        $text = preg_replace('/(<\/h[1-6]>)<\/p>/', '$1', $text);
-        $text = preg_replace('/<p>(<ul>|<ol>|<pre>|<blockquote>|<table|<hr)/', '$1', $text);
-        $text = preg_replace('/(<\/ul>|<\/ol>|<\/pre>|<\/blockquote>|<\/table>|<\/hr>)<\/p>/', '$1', $text);
-
-        return $text;
+        return $html;
     }
 
     public static function extractTitle($markdown) {
