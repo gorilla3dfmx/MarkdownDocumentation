@@ -38,6 +38,11 @@
                     </li>
                     <?php if ($authenticated ?? false): ?>
                         <li class="nav-item">
+                            <a class="nav-link" href="<?= Url::to('/rebuild-search-index') ?>" title="Rebuild Search Index">
+                                <i class="bi bi-arrow-clockwise"></i> Rebuild Index
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="<?= Url::to('/logout') ?>">
                                 <i class="bi bi-box-arrow-right"></i> Logout
                             </a>

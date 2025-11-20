@@ -25,6 +25,7 @@ $router->get('/', 'HomeController@index');
 $router->get('/version/{version}', 'DocumentationController@version');
 $router->get('/version/{version}/page/{path}', 'DocumentationController@page');
 $router->get('/search', 'SearchController@index');
+$router->get('/rebuild-search-index', 'SearchController@rebuild');
 $router->get('/export/pdf', 'ExportController@pdf');
 
 // Authentication routes

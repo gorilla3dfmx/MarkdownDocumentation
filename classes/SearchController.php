@@ -32,4 +32,15 @@ class SearchController {
             'authenticated' => Auth::isAuthenticated()
         ]);
     }
+
+    public function rebuild($params = []) {
+        // Require authentication
+        Auth::requireAuth();
+
+        // Render the rebuild page which will execute the build script
+        return View::render('rebuild-search-index', [
+            'title' => 'Rebuild Search Index - ' . SITE_TITLE,
+            'authenticated' => Auth::isAuthenticated()
+        ]);
+    }
 }
