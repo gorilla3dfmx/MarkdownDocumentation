@@ -54,15 +54,17 @@ class SimplePDF {
     <title>' . htmlspecialchars($this->title) . '</title>
     <style>
         @page {
-            margin: 2cm;
+            margin: 3.5cm 3cm 3cm 3.5cm;
+            size: A4;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            line-height: 1.6;
+            line-height: 1.8;
             color: #333;
-            max-width: 21cm;
+            max-width: 16cm;
             margin: 0 auto;
-            padding: 20px;
+            padding: 1cm;
+            font-size: 11pt;
         }
         h1 {
             color: #0d6efd;

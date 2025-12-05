@@ -54,7 +54,10 @@ ob_start();
 
                 <div class="mt-4 mb-4">
                     <a href="<?= Url::to('/export/pdf?version=' . urlencode($version)) ?>" class="btn btn-lg btn-primary" target="_blank">
-                        <i class="bi bi-file-pdf"></i> Export Complete Documentation as PDF
+                        <i class="bi bi-file-pdf"></i> Export as PDF
+                    </a>
+                    <a href="<?= Url::to('/export/zip?version=' . urlencode($version)) ?>" class="btn btn-lg btn-success ms-2">
+                        <i class="bi bi-robot"></i> Export for AI
                     </a>
                 </div>
 
@@ -67,39 +70,49 @@ ob_start();
                                 </h5>
                             </div>
                             <div class="card-body text-start">
-                                <div class="row">
-                                    <?php
-                                    $allPages = [];
-                                    function collectPages($tree, &$pages) {
-                                        foreach ($tree as $item) {
-                                            if ($item['type'] === 'file') {
-                                                $pages[] = $item;
-                                            } elseif (!empty($item['children'])) {
-                                                collectPages($item['children'], $pages);
+                                <?php
+                                /**
+                                 * Render the tree structure with grouping headers
+                                 * $level represents the folder depth (0 = root folders)
+                                 */
+                                function renderOverviewTree($tree, $level = 0, $parentPath = '') {
+                                    // Map levels to valid Bootstrap margin classes (ms-0 through ms-5)
+                                    // Use padding for deeper levels beyond Bootstrap's scale
+                                    $indentMap = [0 => '', 1 => 'ms-3', 2 => 'ms-4', 3 => 'ms-5'];
+
+                                    foreach ($tree as $item) {
+                                        if ($item['type'] === 'folder') {
+                                            // Render folder as a section header
+                                            // Root folders (level 0): h5, no indent
+                                            // Nested folders (level > 0): h6 with indent
+                                            $headerClass = $level === 0 ? 'h5 mt-4 mb-3 pb-2 border-bottom border-secondary' : 'h6 mt-3 mb-2';
+                                            $folderIndent = isset($indentMap[$level]) ? $indentMap[$level] : 'ms-5';
+                                            echo '<div class="' . $headerClass . ' ' . $folderIndent . '">';
+                                            echo '<i class="bi bi-folder text-warning me-2"></i>';
+                                            echo '<strong>' . View::escape($item['display']) . '</strong>';
+                                            echo '</div>';
+
+                                            // Render children with increased indentation
+                                            if (!empty($item['children'])) {
+                                                renderOverviewTree($item['children'], $level + 1, $item['path']);
                                             }
+                                        } else {
+                                            // Render file as a link
+                                            // Files are indented at the same depth as their containing folder's children
+                                            $fileIndent = isset($indentMap[$level]) ? $indentMap[$level] : 'ms-5';
+                                            echo '<div class="mb-2 ' . $fileIndent . '">';
+                                            echo '<a href="' . View::escape($item['url']) . '" class="text-decoration-none d-inline-flex align-items-center">';
+                                            echo '<i class="bi bi-file-text text-info me-2"></i>';
+                                            echo '<span>' . View::escape($item['display']) . '</span>';
+                                            echo '</a>';
+                                            echo '</div>';
                                         }
                                     }
-                                    collectPages($tree, $allPages);
+                                }
 
-                                    $half = ceil(count($allPages) / 2);
-                                    $columns = [array_slice($allPages, 0, $half), array_slice($allPages, $half)];
-                                    ?>
-
-                                    <?php foreach ($columns as $column): ?>
-                                        <div class="col-md-6">
-                                            <ul class="list-unstyled">
-                                                <?php foreach ($column as $page): ?>
-                                                    <li class="mb-2">
-                                                        <a href="<?= View::escape($page['url']) ?>" class="text-decoration-none">
-                                                            <i class="bi bi-file-text text-info"></i>
-                                                            <?= View::escape($page['display']) ?>
-                                                        </a>
-                                                    </li>
-                                                <?php endforeach; ?>
-                                            </ul>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
+                                // Render the tree structure
+                                renderOverviewTree($tree);
+                                ?>
                             </div>
                         </div>
                     </div>
@@ -227,19 +240,52 @@ ob_start();
 <script>
 // Store current version for JavaScript use
 window.currentVersion = <?= json_encode($version) ?>;
+
+// Function to move an item up or down
+function moveItem(version, itemPath, direction, itemType) {
+    if (!confirm('Move this ' + itemType + ' ' + direction + '?')) {
+        return;
+    }
+
+    fetch('<?= Url::to('/api/move-item.php') ?>', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            version: version,
+            item_path: itemPath,
+            direction: direction,
+            item_type: itemType
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Reload the page to show new order
+            window.location.reload();
+        } else {
+            alert('Failed to move item: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error);
+    });
+}
 </script>
 <?php endif; ?>
 
 <?php
-function renderTree($tree, $currentPath = '', $level = 0, $authenticated = false, $version = '') {
+function renderTree($tree, $currentPath = '', $level = 0, $authenticated = false, $version = '', $parentPath = '') {
     $html = '<ul class="list-unstyled tree-list' . ($level > 0 ? ' ms-3' : '') . '">';
 
-    foreach ($tree as $item) {
+    $count = count($tree);
+    foreach ($tree as $index => $item) {
         $html .= '<li class="mb-1">';
 
         if ($item['type'] === 'folder') {
             $html .= '<div class="d-flex align-items-center justify-content-between">';
-            $html .= '<div class="d-flex align-items-center">';
+            $html .= '<div class="d-flex align-items-center flex-grow-1">';
             $html .= '<span class="tree-toggle me-1" onclick="toggleFolder(this)" style="cursor: pointer; user-select: none;">
                         <i class="bi bi-chevron-right"></i>
                       </span>';
@@ -247,26 +293,85 @@ function renderTree($tree, $currentPath = '', $level = 0, $authenticated = false
             $html .= '<span class="text-secondary small">' . View::escape($item['display']) . '</span>';
             $html .= '</div>';
 
-            // Add delete button for folders (only when authenticated)
+            // Add ordering and delete buttons for folders (only when authenticated)
             if ($authenticated) {
+                $html .= '<div class="btn-group btn-group-sm" role="group">';
+
+                // Up button (disabled if first item)
+                if ($index > 0) {
+                    $html .= '<button type="button" class="btn btn-sm btn-link text-secondary p-0" style="font-size: 0.7rem;" onclick="moveItem(\'' . htmlspecialchars($version, ENT_QUOTES) . '\', \'' . htmlspecialchars($item['path'], ENT_QUOTES) . '\', \'up\', \'folder\')" title="Move up">
+                                <i class="bi bi-arrow-up"></i>
+                              </button>';
+                } else {
+                    $html .= '<button type="button" class="btn btn-sm btn-link text-muted p-0" style="font-size: 0.7rem; opacity: 0.3;" disabled title="Already first">
+                                <i class="bi bi-arrow-up"></i>
+                              </button>';
+                }
+
+                // Down button (disabled if last item)
+                if ($index < $count - 1) {
+                    $html .= '<button type="button" class="btn btn-sm btn-link text-secondary p-0" style="font-size: 0.7rem;" onclick="moveItem(\'' . htmlspecialchars($version, ENT_QUOTES) . '\', \'' . htmlspecialchars($item['path'], ENT_QUOTES) . '\', \'down\', \'folder\')" title="Move down">
+                                <i class="bi bi-arrow-down"></i>
+                              </button>';
+                } else {
+                    $html .= '<button type="button" class="btn btn-sm btn-link text-muted p-0" style="font-size: 0.7rem; opacity: 0.3;" disabled title="Already last">
+                                <i class="bi bi-arrow-down"></i>
+                              </button>';
+                }
+
+                // Delete button
                 $folderPath = $item['path'];
-                $html .= '<button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2" style="font-size: 0.8rem;" onclick="confirmDeleteFolder(\'' . htmlspecialchars($version, ENT_QUOTES) . '\', \'' . htmlspecialchars($folderPath, ENT_QUOTES) . '\', event)" title="Delete folder">
+                $html .= '<button type="button" class="btn btn-sm btn-link text-danger p-0 ms-1" style="font-size: 0.7rem;" onclick="confirmDeleteFolder(\'' . htmlspecialchars($version, ENT_QUOTES) . '\', \'' . htmlspecialchars($folderPath, ENT_QUOTES) . '\', event)" title="Delete folder">
                             <i class="bi bi-trash"></i>
                           </button>';
+
+                $html .= '</div>';
             }
 
             $html .= '</div>';
 
             if (!empty($item['children'])) {
                 $html .= '<div class="tree-children" style="display: none;">';
-                $html .= renderTree($item['children'], $currentPath, $level + 1, $authenticated, $version);
+                $html .= renderTree($item['children'], $currentPath, $level + 1, $authenticated, $version, $item['path']);
                 $html .= '</div>';
             }
         } else {
-            $html .= '<a href="' . View::escape($item['url']) . '" class="d-flex align-items-center text-decoration-none small">';
+            $html .= '<div class="d-flex align-items-center justify-content-between">';
+            $html .= '<a href="' . View::escape($item['url']) . '" class="d-flex align-items-center text-decoration-none small flex-grow-1">';
             $html .= '<i class="bi bi-file-text text-info me-2"></i>';
             $html .= '<span class="text-light">' . View::escape($item['display']) . '</span>';
             $html .= '</a>';
+
+            // Add ordering buttons for files (only when authenticated)
+            if ($authenticated) {
+                $html .= '<div class="btn-group btn-group-sm" role="group">';
+
+                // Up button (disabled if first item)
+                if ($index > 0) {
+                    $html .= '<button type="button" class="btn btn-sm btn-link text-secondary p-0" style="font-size: 0.7rem;" onclick="moveItem(\'' . htmlspecialchars($version, ENT_QUOTES) . '\', \'' . htmlspecialchars($item['path'], ENT_QUOTES) . '\', \'up\', \'file\')" title="Move up">
+                                <i class="bi bi-arrow-up"></i>
+                              </button>';
+                } else {
+                    $html .= '<button type="button" class="btn btn-sm btn-link text-muted p-0" style="font-size: 0.7rem; opacity: 0.3;" disabled title="Already first">
+                                <i class="bi bi-arrow-up"></i>
+                              </button>';
+                }
+
+                // Down button (disabled if last item)
+                if ($index < $count - 1) {
+                    $html .= '<button type="button" class="btn btn-sm btn-link text-secondary p-0" style="font-size: 0.7rem;" onclick="moveItem(\'' . htmlspecialchars($version, ENT_QUOTES) . '\', \'' . htmlspecialchars($item['path'], ENT_QUOTES) . '\', \'down\', \'file\')" title="Move down">
+                                <i class="bi bi-arrow-down"></i>
+                              </button>';
+                } else {
+                    $html .= '<button type="button" class="btn btn-sm btn-link text-muted p-0" style="font-size: 0.7rem; opacity: 0.3;" disabled title="Already last">
+                                <i class="bi bi-arrow-down"></i>
+                              </button>';
+                }
+
+                $html .= '</div>';
+            }
+
+            $html .= '</div>';
         }
 
         $html .= '</li>';

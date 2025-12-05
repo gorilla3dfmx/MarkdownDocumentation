@@ -71,9 +71,14 @@ ob_start();
                                 <a href="<?= Url::to('/version/' . urlencode($version['name'])) ?>" class="btn btn-primary">
                                     <i class="bi bi-arrow-right-circle"></i> Browse Documentation
                                 </a>
-                                <a href="<?= Url::to('/export/pdf?version=' . urlencode($version['name'])) ?>" class="btn btn-outline-secondary" target="_blank">
-                                    <i class="bi bi-file-pdf"></i> Export as PDF
-                                </a>
+                                <div class="btn-group" role="group">
+                                    <a href="<?= Url::to('/export/pdf?version=' . urlencode($version['name'])) ?>" class="btn btn-outline-secondary" target="_blank">
+                                        <i class="bi bi-file-pdf"></i> PDF
+                                    </a>
+                                    <a href="<?= Url::to('/export/zip?version=' . urlencode($version['name'])) ?>" class="btn btn-outline-success">
+                                        <i class="bi bi-robot"></i> Export for AI
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>

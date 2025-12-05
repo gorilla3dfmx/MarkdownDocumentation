@@ -13,7 +13,8 @@ class EditorController {
         // Decode path
         $pagePath = urldecode($pagePath);
 
-        $markdown = DocumentationManager::getPage($version, $pagePath);
+        // Get raw content (including frontmatter) for editing
+        $markdown = DocumentationManager::getPageRaw($version, $pagePath);
 
         if ($markdown === null) {
             http_response_code(404);
@@ -63,7 +64,12 @@ class EditorController {
 
         header('Content-Type: text/html');
         $markdown = $_POST['markdown'] ?? '';
-        echo MarkdownParser::parse($markdown);
+
+        // Strip frontmatter from preview (user edits raw, but preview shows rendered without frontmatter)
+        $parsed = DocumentationManager::parseFrontmatterPublic($markdown);
+        $contentWithoutFrontmatter = $parsed['content'];
+
+        echo MarkdownParser::parse($contentWithoutFrontmatter);
         exit;
     }
 }

@@ -17,6 +17,12 @@ ob_start();
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <!-- Return to Version Summary Button -->
+                    <div class="mt-2">
+                        <a href="<?= Url::to('/version/' . urlencode($version)) ?>" class="btn btn-sm btn-outline-primary w-100">
+                            <i class="bi bi-house"></i> Version Overview
+                        </a>
+                    </div>
                 </div>
 
                 <!-- Navigation Tree -->

@@ -12,9 +12,9 @@ class ExportController {
             $pages = [$pages];
         }
 
-        // If no specific pages selected, export all
+        // If no specific pages selected, export all in correct order
         if (empty($pages)) {
-            $allPages = DocumentationManager::getAllPages($version);
+            $allPages = DocumentationManager::getAllPagesOrdered($version);
             $pages = array_column($allPages, 'path');
         }
 
@@ -48,5 +48,107 @@ class ExportController {
         }
 
         return $pdf->output();
+    }
+
+    public function zip($params = []) {
+        $version = $_GET['version'] ?? '';
+
+        if (empty($version)) {
+            http_response_code(400);
+            echo 'Version parameter is required';
+            return;
+        }
+
+        // Check if ZipArchive is available
+        if (!class_exists('ZipArchive')) {
+            http_response_code(500);
+            echo 'ZIP functionality is not available. Please enable the PHP zip extension.';
+            return;
+        }
+
+        // Verify version exists
+        $versionPath = DOCS_PATH . '/' . $version;
+        if (!file_exists($versionPath) || !is_dir($versionPath)) {
+            http_response_code(404);
+            echo 'Version not found';
+            return;
+        }
+
+        // Create ZIP file
+        $zipFilename = 'documentation-' . $version . '-' . date('Y-m-d') . '.zip';
+        $tempZipPath = sys_get_temp_dir() . '/' . $zipFilename;
+
+        $zip = new ZipArchive();
+        if ($zip->open($tempZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            http_response_code(500);
+            echo 'Failed to create ZIP file';
+            return;
+        }
+
+        // Get file tree to check for exclude_export flags
+        $tree = DocumentationManager::getFileTree($version);
+
+        // Add all markdown files with their folder structure
+        $this->addDirectoryToZip($zip, $versionPath, $version, '', $tree);
+
+        $zip->close();
+
+        // Send ZIP file to browser
+        header('Content-Type: application/zip');
+        header('Content-Disposition: attachment; filename="' . $zipFilename . '"');
+        header('Content-Length: ' . filesize($tempZipPath));
+        readfile($tempZipPath);
+
+        // Clean up temporary file
+        unlink($tempZipPath);
+    }
+
+    private function addDirectoryToZip($zip, $dirPath, $baseDir, $zipPath = '', $tree = null) {
+        $items = scandir($dirPath);
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') continue;
+
+            // Skip files and folders starting with a dot
+            if ($item[0] === '.') continue;
+
+            $fullPath = $dirPath . '/' . $item;
+            $relativePath = $zipPath ? $zipPath . '/' . $item : $item;
+
+            if (is_dir($fullPath)) {
+                // Find the corresponding folder in the tree
+                $subTree = null;
+                if ($tree !== null) {
+                    foreach ($tree as $treeItem) {
+                        if ($treeItem['type'] === 'folder' && $treeItem['name'] === $item) {
+                            $subTree = $treeItem['children'] ?? null;
+                            break;
+                        }
+                    }
+                }
+
+                // Add directory (empty folder)
+                $zip->addEmptyDir($relativePath);
+
+                // Recursively add contents
+                $this->addDirectoryToZip($zip, $fullPath, $baseDir, $relativePath, $subTree);
+            } elseif (pathinfo($item, PATHINFO_EXTENSION) === 'md') {
+                // Check if this file should be excluded from export
+                $shouldExclude = false;
+                if ($tree !== null) {
+                    foreach ($tree as $treeItem) {
+                        if ($treeItem['type'] === 'file' && $treeItem['name'] === $item) {
+                            $shouldExclude = isset($treeItem['exclude_export']) && $treeItem['exclude_export'];
+                            break;
+                        }
+                    }
+                }
+
+                // Add markdown file only if not excluded
+                if (!$shouldExclude) {
+                    $zip->addFile($fullPath, $relativePath);
+                }
+            }
+        }
     }
 }
