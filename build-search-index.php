@@ -29,6 +29,9 @@ try {
 
     $totalPages = 0;
 
+    // One transaction for all pages, one FTS rebuild at the very end
+    SearchIndex::beginBatch();
+
     foreach ($versions as $version) {
         echo "Indexing version: {$version['name']}\n";
 
@@ -39,15 +42,19 @@ try {
 
             $markdown = DocumentationManager::getPage($version['name'], $page['path']);
             if ($markdown !== null) {
-                SearchIndex::indexPage($version['name'], $page['path'], $markdown);
+                SearchIndex::indexPage($version['name'], $page['path'], $markdown, false);
                 $totalPages++;
             }
         }
     }
 
+    echo "\nRebuilding full text index...\n";
+    SearchIndex::endBatch();
+
     echo "\n✓ Successfully indexed $totalPages pages across " . count($versions) . " version(s).\n";
 
 } catch (Exception $e) {
+    SearchIndex::cancelBatch();
     echo "✗ Error: " . $e->getMessage() . "\n";
     exit(1);
 }
