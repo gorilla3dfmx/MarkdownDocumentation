@@ -56,7 +56,7 @@ class SearchIndex {
 
         $title = MarkdownParser::extractTitle($markdown);
         $content = strip_tags(MarkdownParser::parse($markdown));
-        $url = Url::to('/version/' . urlencode($version) . '/page/' . $pagePath);
+        $url = self::pageUrl($version, $pagePath);
 
         // Insert or update in main index
         $stmt = $db->prepare("
@@ -239,7 +239,20 @@ class SearchIndex {
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // The stored url contains the BASE_URL from indexing time, which breaks
+        // when the site is moved (e.g. /doc/v3 -> subdomain root). Build it fresh.
+        foreach ($results as &$result) {
+            $result['url'] = self::pageUrl($result['version'], $result['page_path']);
+        }
+        unset($result);
+
+        return $results;
+    }
+
+    private static function pageUrl($version, $pagePath) {
+        return Url::to('/version/' . urlencode($version) . '/page/' . $pagePath);
     }
 
     /**
