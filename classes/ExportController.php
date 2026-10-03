@@ -146,9 +146,80 @@ class ExportController {
 
                 // Add markdown file only if not excluded
                 if (!$shouldExclude) {
-                    $zip->addFile($fullPath, $relativePath);
+                    $content = $this->prepareMarkdownForExport($zip, file_get_contents($fullPath), $relativePath);
+                    $zip->addFromString($relativePath, $content);
                 }
             }
         }
+    }
+
+    /**
+     * Strip frontmatter and bundle referenced local images into the ZIP.
+     * Image links are rewritten relative to the markdown file's location in the archive.
+     */
+    private function prepareMarkdownForExport($zip, $markdown, $relativePath) {
+        // Remove frontmatter (order, exclude_export, ...)
+        $parsed = DocumentationManager::parseFrontmatterPublic($markdown);
+        $content = ltrim($parsed['content'], "\r\n");
+
+        // Prefix to reach the archive root from this file's folder
+        $prefix = str_repeat('../', substr_count($relativePath, '/'));
+
+        $replaceImage = function ($src) use ($zip, $prefix) {
+            $imagePath = $this->resolveLocalImage($src);
+            if ($imagePath === null) return $src;
+
+            if ($zip->locateName($imagePath) === false) {
+                $zip->addFile(BASE_PATH . '/' . $imagePath, $imagePath);
+            }
+            return $prefix . $imagePath;
+        };
+
+        // Markdown images: ![alt](src "title")
+        $content = preg_replace_callback(
+            '/(!\[[^\]]*\]\(\s*<?)([^)\s>]+)/',
+            function ($m) use ($replaceImage) {
+                return $m[1] . $replaceImage($m[2]);
+            },
+            $content
+        );
+
+        // HTML images: <img src="...">
+        $content = preg_replace_callback(
+            '/(<img\b[^>]*?\bsrc\s*=\s*["\'])([^"\']+)/i',
+            function ($m) use ($replaceImage) {
+                return $m[1] . $replaceImage($m[2]);
+            },
+            $content
+        );
+
+        return $content;
+    }
+
+    /**
+     * Resolve an image reference to a path relative to BASE_PATH.
+     * Returns null for external URLs or files that don't exist / lie outside BASE_PATH.
+     */
+    private function resolveLocalImage($src) {
+        if (preg_match('#^([a-z][a-z0-9+.-]*:|//)#i', $src)) return null;
+
+        $path = rawurldecode(preg_replace('/[?#].*$/', '', $src));
+
+        // Strip site base URL (e.g. /doc/v3/data/images/...)
+        if (BASE_URL !== '' && strpos($path, BASE_URL . '/') === 0) {
+            $path = substr($path, strlen(BASE_URL));
+        }
+        $path = ltrim($path, '/');
+        if (strpos($path, './') === 0) $path = substr($path, 2);
+
+        $basePath = realpath(BASE_PATH);
+        $fullPath = realpath(BASE_PATH . '/' . $path);
+        if ($fullPath === false || !is_file($fullPath)) return null;
+        if (strpos($fullPath, $basePath . DIRECTORY_SEPARATOR) !== 0) return null;
+
+        $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+        if (!in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'])) return null;
+
+        return str_replace('\\', '/', substr($fullPath, strlen($basePath) + 1));
     }
 }
