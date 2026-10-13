@@ -2,6 +2,8 @@
 
 Version 2.0 brings exciting new features and improvements!
 
+![G3D Logo](data/images/img_691b2ab9489eb1.74733318.png)
+
 ## New Features
 
 ### 1. Improved Performance

@@ -74,8 +74,9 @@ class ExportController {
             return;
         }
 
-        // Create ZIP file
-        $zipFilename = 'documentation-' . $version . '-' . date('Y-m-d') . '.zip';
+        // Create ZIP file as Claude skill: one root folder with SKILL.md, INDEX.md and references/
+        $skillName = SkillBuilder::skillName($version);
+        $zipFilename = $skillName . '-skill-' . date('Y-m-d') . '.zip';
         $tempZipPath = sys_get_temp_dir() . '/' . $zipFilename;
 
         $zip = new ZipArchive();
@@ -85,11 +86,19 @@ class ExportController {
             return;
         }
 
+        $root = $skillName . '/';
+        $zip->addEmptyDir($skillName);
+
+        foreach (SkillBuilder::build($version) as $file => $content) {
+            $zip->addFromString($root . $file, $content);
+        }
+
         // Get file tree to check for exclude_export flags
         $tree = DocumentationManager::getFileTree($version);
 
         // Add all markdown files with their folder structure
-        $this->addDirectoryToZip($zip, $versionPath, $version, '', $tree);
+        $zip->addEmptyDir($root . SkillBuilder::REFERENCES_DIR);
+        $this->addDirectoryToZip($zip, $versionPath, $root, SkillBuilder::REFERENCES_DIR, $tree);
 
         $zip->close();
 
@@ -103,7 +112,10 @@ class ExportController {
         unlink($tempZipPath);
     }
 
-    private function addDirectoryToZip($zip, $dirPath, $baseDir, $zipPath = '', $tree = null) {
+    /**
+     * $root is the skill folder inside the archive, $zipPath the path below it.
+     */
+    private function addDirectoryToZip($zip, $dirPath, $root, $zipPath = '', $tree = null) {
         $items = scandir($dirPath);
 
         foreach ($items as $item) {
@@ -128,10 +140,10 @@ class ExportController {
                 }
 
                 // Add directory (empty folder)
-                $zip->addEmptyDir($relativePath);
+                $zip->addEmptyDir($root . $relativePath);
 
                 // Recursively add contents
-                $this->addDirectoryToZip($zip, $fullPath, $baseDir, $relativePath, $subTree);
+                $this->addDirectoryToZip($zip, $fullPath, $root, $relativePath, $subTree);
             } elseif (pathinfo($item, PATHINFO_EXTENSION) === 'md') {
                 // Check if this file should be excluded from export
                 $shouldExclude = false;
@@ -146,8 +158,8 @@ class ExportController {
 
                 // Add markdown file only if not excluded
                 if (!$shouldExclude) {
-                    $content = $this->prepareMarkdownForExport($zip, file_get_contents($fullPath), $relativePath);
-                    $zip->addFromString($relativePath, $content);
+                    $content = $this->prepareMarkdownForExport($zip, file_get_contents($fullPath), $root, $relativePath);
+                    $zip->addFromString($root . $relativePath, $content);
                 }
             }
         }
@@ -155,22 +167,23 @@ class ExportController {
 
     /**
      * Strip frontmatter and bundle referenced local images into the ZIP.
-     * Image links are rewritten relative to the markdown file's location in the archive.
+     * Images are stored below the skill folder ($root) with their site path,
+     * links are rewritten relative to the markdown file's location.
      */
-    private function prepareMarkdownForExport($zip, $markdown, $relativePath) {
+    private function prepareMarkdownForExport($zip, $markdown, $root, $relativePath) {
         // Remove frontmatter (order, exclude_export, ...)
         $parsed = DocumentationManager::parseFrontmatterPublic($markdown);
         $content = ltrim($parsed['content'], "\r\n");
 
-        // Prefix to reach the archive root from this file's folder
+        // Prefix to reach the skill folder from this file's folder
         $prefix = str_repeat('../', substr_count($relativePath, '/'));
 
-        $replaceImage = function ($src) use ($zip, $prefix) {
+        $replaceImage = function ($src) use ($zip, $root, $prefix) {
             $imagePath = $this->resolveLocalImage($src);
             if ($imagePath === null) return $src;
 
-            if ($zip->locateName($imagePath) === false) {
-                $zip->addFile(BASE_PATH . '/' . $imagePath, $imagePath);
+            if ($zip->locateName($root . $imagePath) === false) {
+                $zip->addFile(BASE_PATH . '/' . $imagePath, $root . $imagePath);
             }
             return $prefix . $imagePath;
         };
