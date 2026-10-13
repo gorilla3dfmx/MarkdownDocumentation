@@ -7,6 +7,12 @@ $totalPages = 0;
 $success = false;
 $errorMessage = null;
 
+// Indexing a full documentation tree takes longer than the default
+// max_execution_time of 30 seconds on larger versions.
+@set_time_limit(0);
+@ini_set('max_execution_time', '0');
+ignore_user_abort(true);
+
 try {
     // Get all versions
     $versions = DocumentationManager::getVersions();
@@ -15,6 +21,9 @@ try {
         $errorMessage = "No versions found in docs/ directory.";
     } else {
         $output[] = ['type' => 'info', 'message' => 'Starting search index rebuild...'];
+
+        // One transaction for all pages, one FTS rebuild at the very end
+        SearchIndex::beginBatch();
 
         foreach ($versions as $version) {
             $output[] = ['type' => 'version', 'message' => "Indexing version: {$version['name']}"];
@@ -26,17 +35,20 @@ try {
 
                 $markdown = DocumentationManager::getPage($version['name'], $page['path']);
                 if ($markdown !== null) {
-                    SearchIndex::indexPage($version['name'], $page['path'], $markdown);
+                    SearchIndex::indexPage($version['name'], $page['path'], $markdown, false);
                     $totalPages++;
                 }
             }
         }
+
+        SearchIndex::endBatch();
 
         $output[] = ['type' => 'success', 'message' => "Successfully indexed $totalPages pages across " . count($versions) . " version(s)."];
         $success = true;
     }
 
 } catch (Exception $e) {
+    SearchIndex::cancelBatch();
     $errorMessage = "Error: " . $e->getMessage();
 }
 ?>

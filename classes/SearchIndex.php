@@ -46,13 +46,17 @@ class SearchIndex {
 
     /**
      * Index a single page
+     *
+     * $updateFTS = false skips the (expensive) full FTS rebuild. Batch callers
+     * pass false for every page and call rebuildFTS() once when they are done -
+     * otherwise indexing N pages rebuilds the whole FTS table N times.
      */
-    public static function indexPage($version, $pagePath, $markdown) {
+    public static function indexPage($version, $pagePath, $markdown, $updateFTS = true) {
         $db = self::getDB();
 
         $title = MarkdownParser::extractTitle($markdown);
         $content = strip_tags(MarkdownParser::parse($markdown));
-        $url = Url::to('/version/' . urlencode($version) . '/page/' . $pagePath);
+        $url = self::pageUrl($version, $pagePath);
 
         // Insert or update in main index
         $stmt = $db->prepare("
@@ -69,7 +73,51 @@ class SearchIndex {
         ]);
 
         // Update FTS index
+        if ($updateFTS) {
+            self::rebuildFTS();
+        }
+    }
+
+    /**
+     * Start a batch of indexPage() calls. Without the surrounding transaction
+     * SQLite commits (and flushes) every single INSERT on its own.
+     */
+    public static function beginBatch() {
+        $db = self::getDB();
+
+        if (!$db->inTransaction()) {
+            $db->beginTransaction();
+        }
+    }
+
+    /**
+     * Finish a batch: commit the pending inserts and rebuild the FTS table once.
+     */
+    public static function endBatch() {
+        // Nothing was indexed - do not open a connection just to close it
+        if (self::$db === null) {
+            return;
+        }
+
+        if (self::$db->inTransaction()) {
+            self::$db->commit();
+        }
+
         self::rebuildFTS();
+    }
+
+    /**
+     * Abort a batch without writing anything. Safe to call from an error
+     * handler - it never opens a connection of its own.
+     */
+    public static function cancelBatch() {
+        if (self::$db === null) {
+            return;
+        }
+
+        if (self::$db->inTransaction()) {
+            self::$db->rollBack();
+        }
     }
 
     /**
@@ -78,12 +126,19 @@ class SearchIndex {
     public static function indexVersion($version) {
         $pages = DocumentationManager::getAllPages($version);
 
-        foreach ($pages as $page) {
-            $markdown = DocumentationManager::getPage($version, $page['path']);
-            if ($markdown !== null) {
-                self::indexPage($version, $page['path'], $markdown);
+        self::beginBatch();
+        try {
+            foreach ($pages as $page) {
+                $markdown = DocumentationManager::getPage($version, $page['path']);
+                if ($markdown !== null) {
+                    self::indexPage($version, $page['path'], $markdown, false);
+                }
             }
+        } catch (Exception $e) {
+            self::cancelBatch();
+            throw $e;
         }
+        self::endBatch();
     }
 
     /**
@@ -92,27 +147,57 @@ class SearchIndex {
     public static function indexAll() {
         $versions = DocumentationManager::getVersions();
 
-        foreach ($versions as $version) {
-            self::indexVersion($version['name']);
+        self::beginBatch();
+        try {
+            foreach ($versions as $version) {
+                $pages = DocumentationManager::getAllPages($version['name']);
+
+                foreach ($pages as $page) {
+                    $markdown = DocumentationManager::getPage($version['name'], $page['path']);
+                    if ($markdown !== null) {
+                        self::indexPage($version['name'], $page['path'], $markdown, false);
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            self::cancelBatch();
+            throw $e;
         }
+        self::endBatch();
     }
 
     /**
      * Rebuild FTS index from main index
      */
-    private static function rebuildFTS() {
+    public static function rebuildFTS() {
         $db = self::getDB();
 
-        $db->exec("DELETE FROM search_fts");
+        $ownTransaction = !$db->inTransaction();
+        if ($ownTransaction) {
+            $db->beginTransaction();
+        }
 
-        $stmt = $db->query("SELECT version, page_path, title, content, url FROM search_index");
-        $insertStmt = $db->prepare("
-            INSERT INTO search_fts (version, page_path, title, content, url)
-            VALUES (:version, :page_path, :title, :content, :url)
-        ");
+        try {
+            $db->exec("DELETE FROM search_fts");
 
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $insertStmt->execute($row);
+            $stmt = $db->query("SELECT version, page_path, title, content, url FROM search_index");
+            $insertStmt = $db->prepare("
+                INSERT INTO search_fts (version, page_path, title, content, url)
+                VALUES (:version, :page_path, :title, :content, :url)
+            ");
+
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $insertStmt->execute($row);
+            }
+        } catch (Exception $e) {
+            if ($ownTransaction && $db->inTransaction()) {
+                $db->rollBack();
+            }
+            throw $e;
+        }
+
+        if ($ownTransaction) {
+            $db->commit();
         }
     }
 
@@ -154,7 +239,20 @@ class SearchIndex {
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // The stored url contains the BASE_URL from indexing time, which breaks
+        // when the site is moved (e.g. /doc/v3 -> subdomain root). Build it fresh.
+        foreach ($results as &$result) {
+            $result['url'] = self::pageUrl($result['version'], $result['page_path']);
+        }
+        unset($result);
+
+        return $results;
+    }
+
+    private static function pageUrl($version, $pagePath) {
+        return Url::to('/version/' . urlencode($version) . '/page/' . $pagePath);
     }
 
     /**
