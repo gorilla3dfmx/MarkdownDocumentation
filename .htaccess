@@ -10,9 +10,12 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php [QSA,L]
 
+# Serve raw markdown and llms*.txt as UTF-8
+AddCharset UTF-8 .md .txt
+
 # Enable compression
 <IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+    AddOutputFilterByType DEFLATE text/html text/plain text/markdown text/xml text/css text/javascript application/javascript application/json
 </IfModule>
 
 # Set cache headers for static assets
